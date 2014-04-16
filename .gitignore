@@ -2,12 +2,14 @@
 /.project
 /.buildpath
 /composer.phar
+composer.*
 /vendor
 /nbproject
 phpunit.xml
 .vagrant
 Vagrantfile
 .idea
+.scs.json
 
 # Mac OS X Finder and whatnot
 .DS_Store
