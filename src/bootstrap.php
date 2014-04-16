@@ -10,12 +10,12 @@ require_once 'class/SCS.php';
 require_once 'class/SCSWrapper.php';
 require_once 'lib/core.function.php';
 
-date_default_timezone_set('UTC');
+//date_default_timezone_set('UTC');
+date_default_timezone_set('PRC');
 
 use Clio\Console;
 use Commando\Command;
 
-$scs_json_path = AROOT . '.scs.json';
 
 $cmd = new Command();
 $cmd->useDefaultHelp(false);
@@ -42,15 +42,71 @@ $cmd->option('h')
 	->aka('help')
 	->boolean();
 
+/*
 $cmd->option('ak')
 	->aka('access_key');
 	
 $cmd->option('sk')
 	->aka('secret_key');
+*/
 	
 $cmd->option('ck')
-	->aka('clear_keys');
+	->aka('clear_keys')
+	->boolean();
+
+$scs_json_path = AROOT . '.scs.json';
+
+if ($cmd['clear_keys']) {
 	
+	@unlink($scs_json_path);	
+	exit();
+}
+
+
+if ($cmd['help'] || !isset($commands[$cmd[0]])) {
+	
+	Console::output(c('logo'));
+	
+	Console::output('scs-cli-tool version %y' . c('version') . '%n');
+	Console::output('');
+	Console::output('');
+	
+	Console::output('%yUsage:%n');
+	Console::output('');
+	Console::output(" [options] COMMAND [parameters]");
+	
+	Console::output('');
+	Console::output('');
+	
+	Console::output('%yOptions:%n');
+	Console::output('');
+	
+	foreach ($options as $item) {
+		
+		Console::output($item);
+	}
+	
+	Console::output('');
+	Console::output('');
+	
+	Console::output('%yCommands:%n');
+	Console::output('');
+	
+	foreach ($commands as $item) {
+			
+		Console::output($item);
+	}
+	
+	Console::output('');
+		
+	exit();
+}
+
+
+
+
+//--------------------------
+
 $scs_keys = json_decode(@file_get_contents($scs_json_path), true);
 
 $access_key = '';
@@ -99,46 +155,6 @@ if ($scs_keys && isset($scs_keys['access_key']) && isset($scs_keys['secret_key']
 		exit();
 	}
 }
-	
-
-if ($cmd['help'] || !isset($commands[$cmd[0]])) {
-	
-	Console::output(c('logo'));
-	
-	Console::output('scs-cli-tool version %y' . c('version') . '%n');
-	Console::output('');
-	Console::output('');
-	
-	Console::output('%yUsage:%n');
-	Console::output('');
-	Console::output(" [options] COMMAND [parameters]");
-	
-	Console::output('');
-	Console::output('');
-	
-	Console::output('%yOptions:%n');
-	Console::output('');
-	
-	foreach ($options as $item) {
-		
-		Console::output($item);
-	}
-	
-	Console::output('');
-	Console::output('');
-	
-	Console::output('%yCommands:%n');
-	Console::output('');
-	
-	foreach ($commands as $item) {
-			
-		Console::output($item);
-	}
-	
-	Console::output('');
-		
-	exit();
-}
 
 
 
@@ -157,12 +173,12 @@ if (isset($commands[$cmd[0]])) {
 				if (isset($response['buckets'])) {
 					
 					Console::output('');
-					Console::output('total: %y' . count($response['buckets']) . '%n');
+					Console::output('total: %Y' . count($response['buckets']) . '%n');
 					Console::output('');
 					
 					foreach ($response['buckets'] as $bucket) {
 						
-						Console::output(date('Y-m-d H:i:s', $bucket['time']) . "\t{$bucket['consumed_bytes']}\t%y{$bucket['name']}%n");
+						Console::output(date('Y-m-d H:i:s', $bucket['time']) . "\t{$bucket['consumed_bytes']}\t%Y{$bucket['name']}%n");
 					}
 				}
 				
@@ -174,15 +190,65 @@ if (isset($commands[$cmd[0]])) {
 			
 		} else {
 			
+			$scs_url_info = parse_scs_url($cmd[1]);
 			
+			if ($scs_url_info === false) {
+				
+				Console::error('%rInvalid argument%n %R"' . $cmd[1] . '"%n');
+				exit();
+			}
+			
+			try {
+				
+				$prefix = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+				
+				$response = SCS::getBucket($scs_url_info['bucket'], $prefix);
+				
+				if (is_array($response)) {
+									
+					Console::output('');
+					Console::output('total: %Y' . count($response) . '%n');
+					Console::output('');
+					
+					foreach ($response as $object) {
+						
+						Console::output(date('Y-m-d H:i:s', $object['time']) . "\t{$object['size']}\t%Y{$object['name']}%n");
+					}
+				}
+				
+			} catch (SCSException $e) {
+			
+				Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+				exit();
+			}
 		}
 		
 	} elseif ($cmd[0] == 'mb') {
 		
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info === false) {
+			
+			Console::error('%rInvalid argument%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		try {
+		
+			if (SCS::putBucket($scs_url_info['bucket'], SCS::ACL_PRIVATE)) {
+			
+				Console::output('%GSuccess.%n');
+			}
+			
+		} catch (SCSException $e) {
+			
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
 	}
 }
 
-Console::output('');
+//Console::output('');
 
 
 //echo $cmd[0] . PHP_EOL . $cmd[1] . PHP_EOL . $cmd['help'] . PHP_EOL;

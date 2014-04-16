@@ -1,5 +1,38 @@
 <?php
 
+function __dnsBucketName($bucket)
+{
+	if (preg_match("/^([a-z]+[a-z0-9\.-]*[a-z0-9]+)$/u", $bucket) && 
+		strlen($bucket) >= 6 && 
+		strlen($bucket) <= 63) {
+		
+		return true;
+	}
+
+	return false;
+}
+
+function parse_scs_url($url)
+{
+	$parse_url = parse_url($url);
+	
+	if (isset($parse_url['scheme']) && strtolower($parse_url['scheme']) == 'scs') {
+		
+		if (isset($parse_url['host']) && __dnsBucketName($parse_url['host'])) {
+			
+			$scs_url_info['bucket'] = $parse_url['host'];
+			
+			if (isset($parse_url['path']) && strlen($parse_url['path']) > 0) {
+				
+				$scs_url_info['object'] = substr($parse_url['path'], 1);
+			}
+			
+			return $scs_url_info;
+		}
+	}
+	
+	return false;
+}
 
 function get_error_message_from_scs($message)
 {
