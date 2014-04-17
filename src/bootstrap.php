@@ -201,7 +201,7 @@ if (isset($commands[$cmd[0]])) {
 			
 			$scs_url_info = parse_scs_url($cmd[1]);
 			
-			print_r($scs_url_info);
+			//print_r($scs_url_info);
 			
 			if ($scs_url_info === false) {
 				
@@ -466,7 +466,17 @@ if (isset($commands[$cmd[0]])) {
 			if ($response !== false && is_array($response)) {
 				
 				unset($response['date']);
-					
+				
+				$mask = "|%20s | %%Y%-50s%%n|";
+				
+				$output = sprintf($mask, 'key', 'value');
+				
+				Console::output($output);
+				
+				$output = sprintf($mask, '', '');
+				
+				Console::output($output);
+						
 				foreach ($response as $key => $value) {
 					
 					if ($key == 'time') {
@@ -474,7 +484,8 @@ if (isset($commands[$cmd[0]])) {
 						$value = date('Y-m-d H:i:s', $value);
 					}
 					
-					Console::output($key . ":\r\n %y" . $value . '%n');
+					$output = sprintf($mask, $key, $value);
+					Console::output($output);
 				}
 				
 			} else {
