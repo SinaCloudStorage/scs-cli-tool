@@ -1,5 +1,17 @@
 <?php
 
+function base_name($filepath)
+{
+	$path_parts = explode(DIRECTORY_SEPARATOR, $filepath);
+	
+	$path_parts_filter = array_filter($path_parts, function($item){
+				
+		return trim($item) != '';
+	});
+	
+	return end($path_parts_filter);
+}
+
 function __dnsBucketName($bucket)
 {
 	if (preg_match("/^([a-z]+[a-z0-9\.-]*[a-z0-9]+)$/u", $bucket) && 
@@ -36,8 +48,14 @@ function parse_scs_url($url)
 
 function get_error_message_from_scs($message)
 {
-	preg_match("/\\[(\\w+)\\].+/u", $message, $m);
-	return $m[0];
+	$r = preg_match("/\\[(\\w+)\\].+/u", $message, $m);
+	
+	if ($r) {
+		
+		return $m[0];
+	}
+	
+	return end(explode(": ", $message, 2));
 }
 
 function z( $str )

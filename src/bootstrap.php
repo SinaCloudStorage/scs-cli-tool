@@ -34,6 +34,11 @@ $commands = array(
 	'mb' => " Make bucket\r\n \tscs.phar mb scs://BUCKET",
 	'rb' => " Remove bucket\r\n \tscs.phar rb scs://BUCKET",
 	'ls' => " List objects or buckets\r\n \tscs.phar ls [scs://BUCKET[/PREFIX]]",
+	'get' => " Get file from bucket\r\n \tscs.phar get scs://BUCKET/OBJECT LOCAL_FILE",
+	'put' => " Put file into bucket\r\n \tscs.phar put FILE [FILE...] scs://BUCKET[/PREFIX]",
+	'del' => " Delete file from bucket\r\n \tscs.phar del scs://BUCKET/OBJECT",
+	'info' => " Get information about Files\r\n \tscs.phar info scs://BUCKET/OBJECT",
+	'cp' => " Copy object\r\n \tscs.phar cp scs://BUCKET1/OBJECT1 scs://BUCKET2[/OBJECT2]",
 );
 
 $cmd->option();
@@ -164,6 +169,8 @@ if (isset($commands[$cmd[0]])) {
 		
 		$url = trim($cmd[1]);
 		
+		$mask = "%20s\t%10s\t%%Y%-30s%%n";
+		
 		if (strlen($url) == 0) {
 			
 			try {
@@ -178,7 +185,9 @@ if (isset($commands[$cmd[0]])) {
 					
 					foreach ($response['buckets'] as $bucket) {
 						
-						Console::output(date('Y-m-d H:i:s', $bucket['time']) . "\t{$bucket['consumed_bytes']}\t%Y{$bucket['name']}%n");
+						//Console::output(date('Y-m-d H:i:s', $bucket['time']) . "\t{$bucket['consumed_bytes']}\t%Y{$bucket['name']}%n");
+						$output = sprintf($mask, date('Y-m-d H:i:s', $bucket['time']), $bucket['consumed_bytes'], $bucket['name']);
+						Console::output($output);
 					}
 				}
 				
@@ -192,30 +201,65 @@ if (isset($commands[$cmd[0]])) {
 			
 			$scs_url_info = parse_scs_url($cmd[1]);
 			
+			print_r($scs_url_info);
+			
 			if ($scs_url_info === false) {
 				
 				Console::error('%rInvalid argument%n %R"' . $cmd[1] . '"%n');
 				exit();
 			}
 			
+			Console::output('...');
+			
 			try {
 				
+				$marker = null;
 				$prefix = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+				//$response = SCS::getBucket($scs_url_info['bucket'], $prefix);
 				
-				$response = SCS::getBucket($scs_url_info['bucket'], $prefix);
+				$isTruncated = true;
+				$marker = null;
 				
-				if (is_array($response)) {
-									
-					Console::output('');
-					Console::output('total: %Y' . count($response) . '%n');
-					Console::output('');
+				while ($isTruncated) {
 					
-					foreach ($response as $object) {
+					$response = SCS::getBucket($scs_url_info['bucket'], $prefix, $marker, $maxKeys = 100, $delimiter = null, $returnCommonPrefixes = false, $nextMarker, $isTruncated);
+					
+					if (is_array($response)) {
+												
+						//Console::output('');
+						//Console::output('total: %Y' . count($response) . '%n');
+						//Console::output('');
 						
-						Console::output(date('Y-m-d H:i:s', $object['time']) . "\t{$object['size']}\t%Y{$object['name']}%n");
+						foreach ($response as $object) {
+							
+							//Console::output(date('Y-m-d H:i:s', $object['time']) . "\t{$object['size']}\t%Y{$object['name']}%n");
+							$output = sprintf($mask, date('Y-m-d H:i:s', $object['time']), $object['size'], $object['name']);
+							Console::output($output);
+						}
+					
+					} else {
+						
+						$isTruncated = false;
+					}
+					
+					if ($isTruncated && $nextMarker && $nextMarker != $marker) {
+											
+						$marker = $nextMarker;
+					
+					} else {
+						
+						$isTruncated = false;
+					}
+					
+					if ($isTruncated) {
+						
+						if (!Console::confirm('Show more?')) {
+							
+							exit();
+						}
 					}
 				}
-				
+
 			} catch (SCSException $e) {
 			
 				Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
@@ -245,72 +289,254 @@ if (isset($commands[$cmd[0]])) {
 			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
 			exit();
 		}
+		
+	} elseif ($cmd[0] == 'rb') {
+			
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info === false) {
+			
+			Console::error('%rInvalid argument%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		if (!Console::confirm('Are you sure delete %G"' . $scs_url_info['bucket'] . '"%n ?')) {
+			
+			Console::output('%GCanceled.%n');
+			exit();
+		}
+		
+		try {
+		
+			if (SCS::deleteBucket($scs_url_info['bucket'])) {
+			
+				Console::output('%GSuccess.%n');
+			}
+			
+		} catch (SCSException $e) {
+			
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
+	
+	} elseif ($cmd[0] == 'get') {
+		
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info !== false) {
+			
+			$object = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		}
+		
+		if ($scs_url_info === false || strlen($object) <= 0) {
+			
+			Console::error('%rInvalid argument 1%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		$local_file = $cmd[2];
+		
+		if (strlen($local_file) <= 0) {
+			
+			Console::error('%rInvalid argument 2%n %R"' . $cmd[2] . '"%n');
+			exit();
+		}
+		
+		Console::output('...');
+		
+		try {
+		
+			$response = SCS::getObject($scs_url_info['bucket'], $object, $local_file);
+			Console::output('%GSuccess.%n');
+			//print_r($response);
+			
+		} catch (SCSException $e) {
+			
+			@unlink($local_file);
+			Console::error('Resources: ' . $cmd[1]);
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
+	
+	} elseif ($cmd[0] == 'put') {
+	
+		$arguments = $cmd->getArgumentValues();
+		
+		$ar_count = count($arguments);
+		
+		if ($ar_count < 3) {
+			
+			Console::error('%rInvalid arguments%n');
+			exit();
+		}
+		
+		$scs_url_info = parse_scs_url($arguments[$ar_count-1]);
+		
+		//print_r($scs_url_info);
+			
+		if ($scs_url_info === false) {
+			
+			Console::error('%rInvalid argument ' . (string)($ar_count-1) . '%n %R"' . $arguments[$ar_count-1] . '"%n');
+			exit();
+		}
+		
+		$prefix = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		
+		for ($i=1; $i<$ar_count-1; $i++) {
+			
+			Console::output('Uploading ' . $arguments[$i] . '...');
+			
+			try {
+				
+				$basename = base_name($arguments[$i]);
+				
+				if ($prefix === null || strlen($prefix) == 0) {
+				
+					$uri = $basename;
+					
+				} elseif (substr($prefix, -1) == '/') {
+					
+					$uri = $prefix . $basename;
+					
+				} else {
+					
+					$uri = $prefix . '/' . $basename;
+				}
+				
+				$response = SCS::putObjectFile($arguments[$i], $scs_url_info['bucket'], $uri);
+				Console::output('%GSuccess.%n');
+				
+			} catch (SCSException $e) {
+				
+				Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+				exit();
+			}
+		}
+		
+	} elseif ($cmd[0] == 'del') {
+	
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info !== false) {
+			
+			$object = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		}
+		
+		if ($scs_url_info === false || strlen($object) <= 0) {
+			
+			Console::error('%rInvalid argument 1%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		Console::output('Deleting...');
+		
+		try {
+		
+			$response = SCS::deleteObject($scs_url_info['bucket'], $object);
+			Console::output('%GSuccess.%n');
+			
+		} catch (SCSException $e) {
+			
+			Console::error('Resources: ' . $cmd[1]);
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
+		
+	} elseif ($cmd[0] == 'info') {
+	
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info !== false) {
+			
+			$object = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		}
+		
+		if ($scs_url_info === false || strlen($object) <= 0) {
+			
+			Console::error('%rInvalid argument 1%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		Console::output('Loading...');
+		
+		try {
+		
+			$response = SCS::getObjectInfo($scs_url_info['bucket'], $object, true);
+			
+			if ($response !== false && is_array($response)) {
+				
+				unset($response['date']);
+					
+				foreach ($response as $key => $value) {
+					
+					if ($key == 'time') {
+						
+						$value = date('Y-m-d H:i:s', $value);
+					}
+					
+					Console::output($key . ":\r\n %y" . $value . '%n');
+				}
+				
+			} else {
+				
+				Console::output('%yNULL%n');
+			}
+			
+			
+		} catch (SCSException $e) {
+			
+			Console::error('Resources: ' . $cmd[1]);
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
+		
+	} elseif ($cmd[0] == 'cp') {
+	
+		$scs_url_info = parse_scs_url($cmd[1]);
+		
+		if ($scs_url_info !== false) {
+			
+			$bucket1 = $scs_url_info['bucket'];
+			$object1 = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		}
+		
+		if ($scs_url_info === false || strlen($object1) <= 0) {
+			
+			Console::error('%rInvalid argument 1%n %R"' . $cmd[1] . '"%n');
+			exit();
+		}
+		
+		$scs_url_info2 = parse_scs_url($cmd[2]);
+		
+		if ($scs_url_info2 !== false) {
+			
+			$bucket2 = $scs_url_info2['bucket'];
+			$object2 = isset($scs_url_info2['object']) ? $scs_url_info2['object'] : null;
+		}
+		
+		if ($scs_url_info2 === false) {
+			
+			Console::error('%rInvalid argument 2%n %R"' . $cmd[2] . '"%n');
+			exit();
+		}
+		
+		if ($object2 === null || strlen($object2) <= 0) {
+			
+			$object2 = $object1;
+		}
+		
+		Console::output('Copying...');
+		
+		try {
+		
+			SCS::copyObject($bucket1, $object1, $bucket2, $object2);
+			Console::output('%GSuccess.%n');
+			
+		} catch (SCSException $e) {
+			
+			Console::error('%r' . get_error_message_from_scs($e->getMessage()) . '%n');
+			exit();
+		}
 	}
+	
 }
-
-//Console::output('');
-
-
-//echo $cmd[0] . PHP_EOL . $cmd[1] . PHP_EOL . $cmd['help'] . PHP_EOL;
-
-/*
-$hello_cmd = new Command();
-
-$hello_cmd->useDefaultHelp(true);
-
-// Define first option
-$hello_cmd->option()
-    ->require()
-    ->describedAs('A person\'s name');
-
-// Define a flag "-t" a.k.a. "--title"
-$hello_cmd->option('t')
-    ->aka('title')
-    ->describedAs('When set, use this title to address the person')
-    ->must(function($title) {
-        $titles = array('Mister', 'Mr', 'Misses', 'Mrs', 'Miss', 'Ms');
-        return in_array($title, $titles);
-    })
-    ->map(function($title) {
-        $titles = array('Mister' => 'Mr', 'Misses' => 'Mrs', 'Miss' => 'Ms');
-        if (array_key_exists($title, $titles))
-            $title = $titles[$title];
-        return "$title. ";
-    });
-
-// Define a boolean flag "-c" aka "--capitalize"
-$hello_cmd->option('c')
-    ->aka('capitalize')
-    ->aka('cap')
-    ->describedAs('Always capitalize the words in a name')
-    ->boolean();
-
-$name = $hello_cmd['capitalize'] ? ucwords($hello_cmd[0]) : $hello_cmd[0];
-
-echo "Hello {$hello_cmd['title']}$name!", PHP_EOL;
-
-
-*/
-
-
-
-//use Clio\Console;
-
-
-
-//print_r($argv);
-
-
-/*
-$scs_json = dirname(__DIR__)  . '/scs.json';
-$scs_json = str_replace('phar://', '', $scs_json);
-*/
-
-//file_put_contents($scs_json, 1);
-
-
-
-//Console::output('this is %rcolored%n and %Bstyled%n');
-
-
-//$sure = Console::confirm('are you sure?');
