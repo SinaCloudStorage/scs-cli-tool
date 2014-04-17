@@ -24,9 +24,18 @@ function __dnsBucketName($bucket)
 	return false;
 }
 
+function mb_parse_url($url) {
+
+    $encodedUrl = preg_replace('%[^:/?#&=\.]+%usDe', 'urlencode(\'$0\')', $url);
+    $components = parse_url($encodedUrl);
+    foreach ($components as &$component)
+        $component = urldecode($component);
+    return $components;
+}
+
 function parse_scs_url($url)
 {
-	$parse_url = parse_url($url);
+	$parse_url = mb_parse_url($url);
 	
 	if (isset($parse_url['scheme']) && strtolower($parse_url['scheme']) == 'scs') {
 		
