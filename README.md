@@ -8,6 +8,10 @@ Cli Tool For 新浪云存储
 
 * PHP >= 5.3.0
 * [PHP cURL]
+* [PHP mbString]
+* [PHP json]
+* [PHP Phar]
+* [PHP pcre]
 
 ### Installation / Usage
 
