@@ -13,6 +13,8 @@ Cli Tool For 新浪云存储
 * [PHP Phar]
 * [PHP pcre]
 
+For CentOS, you will need to run `yum install php php-*`.
+
 ### Installation / Usage
 
 1. Download the [scs.phar](http://sdk.sinastorage.com/scs.phar) .
