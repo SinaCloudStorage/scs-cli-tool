@@ -13,7 +13,7 @@ Cli Tool For 新浪云存储
 * [PHP Phar]
 * [PHP pcre]
 
-For CentOS, you will need to run `yum install php php-*`.
+> For CentOS, you will need to run `yum install php php-*`.
 
 ### Installation / Usage
 
