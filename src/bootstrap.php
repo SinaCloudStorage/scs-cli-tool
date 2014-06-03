@@ -6,6 +6,7 @@ define('AROOT', str_replace('phar://', '', dirname(__DIR__)) . DS);
 
 require_once 'config.php';
 require_once 'vendor/autoload.php';
+require_once 'class/BigFileTools.php';
 require_once 'class/SCS.php';
 require_once 'class/SCSWrapper.php';
 require_once 'lib/core.function.php';
