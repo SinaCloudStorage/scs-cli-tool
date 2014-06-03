@@ -561,6 +561,43 @@ class SCS
 		return true;
 	}
 
+	
+	/**
+	* realFileSize
+	*
+	* @param string $fp Input file
+	* @return long file size
+	*/
+	public static function realFileSize($file)
+	{
+		$fp = fopen($file, 'r');
+		
+	    $pos = 0;
+	    $size = 1073741824;
+	    fseek($fp, 0, SEEK_SET);
+	    while ($size > 1)
+	    {
+	        fseek($fp, $size, SEEK_CUR);
+
+	        if (fgetc($fp) === false)
+	        {
+	            fseek($fp, -$size, SEEK_CUR);
+	            $size = (int)($size / 2);
+	        }
+	        else
+	        {
+	            fseek($fp, -1, SEEK_CUR);
+	            $pos += $size;
+	        }
+	    }
+
+	    while (fgetc($fp) !== false)  $pos++;
+	
+		fclose($fp);
+
+	    return $pos;
+	}
+
 
 	/**
 	* Create input info array for putObject()
@@ -577,9 +614,7 @@ class SCS
 			return false;
 		}
 		
-		$bf = BigFileTools::fromPath($file);
-		
-		return array('file' => $file, 'size' => $bf->getSize(), 'md5sum' => $md5sum !== false ?
+		return array('file' => $file, 'size' => self::realFileSize($file), 'md5sum' => $md5sum !== false ?
 		(is_string($md5sum) ? $md5sum : base64_encode(md5_file($file, true))) : '');
 	}
 
@@ -684,8 +719,7 @@ class SCS
 			$rest->size = $input['size'];
 		else {
 			if (isset($input['file'])) {
-				$bf = BigFileTools::fromPath($input['file']);
-				$rest->size = $bf->getSize();
+				$rest->size = self::realFileSize($input['file']);
 			} elseif (isset($input['data'])) {
 				$rest->size = strlen($input['data']);
 			}
