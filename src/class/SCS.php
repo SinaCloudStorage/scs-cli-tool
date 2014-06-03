@@ -1775,7 +1775,7 @@ final class SCSRequest
 		}
 
 
-		$this->headers['Date'] = gmdate('D, d M Y H:i:s T');
+		$this->headers['Date'] = gmdate('D, d M Y H:i:s T', SCS::__getTime());
 		$this->response = new STDClass;
 		$this->response->error = false;
 		$this->response->body = null;

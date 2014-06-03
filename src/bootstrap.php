@@ -118,6 +118,7 @@ $access_key = '';
 $secret_key = '';
 
 SCS::setExceptions(true);
+SCS::setTimeCorrectionOffset(36000);
 
 if ($scs_keys && isset($scs_keys['access_key']) && isset($scs_keys['secret_key'])) {
 	

@@ -15,7 +15,7 @@ function base_name($filepath)
 function __dnsBucketName($bucket)
 {
 	if (preg_match("/^([a-z]+[a-z0-9\.-]*[a-z0-9]+)$/u", $bucket) && 
-		strlen($bucket) >= 6 && 
+		strlen($bucket) >= 3 && 
 		strlen($bucket) <= 63) {
 		
 		return true;
