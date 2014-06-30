@@ -570,7 +570,7 @@ class SCS
 	*/
 	public static function realFileSize($file)
 	{
-		$fp = fopen($file, 'r');
+		$fp = fopen($file, 'rb');
 		
 	    $pos = 0;
 	    $size = 1073741824;
