@@ -17,7 +17,7 @@ Cli Tool For 新浪云存储
 
 ### Installation / Usage
 
-1. Download the [scs.phar](http://sdk.sinastorage.com/scs.phar) .
+1. Download the [scs.phar](http://sdk.sinastorage.cn/scs.phar) .
 2. Run: `chmod +x /path/to/scs.phar`
 3. Run: `php /path/to/scs.phar -h` or `/path/to/scs.phar -h`
 ``` sh
