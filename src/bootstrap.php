@@ -417,7 +417,7 @@ if (isset($commands[$cmd[0]])) {
 				    while (!feof($fp)) {
 
 				        //上传分片  
-				        $res = SCS::putObject(SCS::inputResourceMultipart($fp, 1024*512, $uploadId, $i), $scs_url_info['bucket'], $uri); 
+				        $res = SCS::putObject(SCS::inputResourceMultipart($fp, 1024 * 1024 * 512, $uploadId, $i), $scs_url_info['bucket'], $uri); 
 				        if (isset($res['hash']))
 				        {   
 				
