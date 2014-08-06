@@ -405,8 +405,66 @@ if (isset($commands[$cmd[0]])) {
 					$uri = $prefix . '/' . $basename;
 				}
 				
-				$response = SCS::putObjectFile($arguments[$i], $scs_url_info['bucket'], $uri);
-				Console::output('%GSuccess.%n');
+				if ( SCS::realFileSize($arguments[$i]) > 1024 * 1024 * 1024 * 2 ) {
+					
+					//初始化上传
+				    $info = SCS::initiateMultipartUpload($scs_url_info['bucket'], $uri);
+				    $uploadId = $info['upload_id'];
+				    $fp = fopen($arguments[$i], 'rb');
+				    $i = 1;
+				    $part_info = array();
+
+				    while (!feof($fp)) {
+
+				        //上传分片  
+				        $res = SCS::putObject(SCS::inputResourceMultipart($fp, 1024*512, $uploadId, $i), $scs_url_info['bucket'], $uri); 
+				        if (isset($res['hash']))
+				        {   
+				
+							 Console::output('Part: ' . $i . " OK! ");
+
+				            $part_info[] = array(
+
+				                'PartNumber' => $i,
+				                'ETag' => $res['hash'],
+				            );
+				        }
+				        $i++;
+				    }
+
+				    //列分片
+				    $parts = SCS::listParts($scs_url_info['bucket'], $uri, $uploadId);
+				    //print_r($parts);
+				    //print_r($part_info);
+
+				    if (count($parts) > 0 && count($parts) == count($part_info)) {
+
+				        foreach ($parts as $part_number => $part) {
+
+				            //echo $part['etag'] . "\n";
+				            //echo $part_info[$k]['ETag'] . "\n";
+
+				            if ($part['etag'] != $part_info[$part_number-1]['ETag']) {
+
+				                
+								  Console::output('错误:分片不匹配');
+								  exit();
+				                break;
+				            }
+				        }
+
+				        //合并分片
+						 Console::output('开始合并...');
+				        SCS::completeMultipartUpload($scs_url_info['bucket'], $uri, $uploadId, $part_info);
+				        Console::output('%GSuccess.%n');
+				        fclose($fp);
+				    }
+					
+				} else {
+					
+					$response = SCS::putObjectFile($arguments[$i], $scs_url_info['bucket'], $uri);
+					Console::output('%GSuccess.%n');
+				}
 				
 			} catch (SCSException $e) {
 				
