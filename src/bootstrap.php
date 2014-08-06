@@ -133,7 +133,7 @@ if ($scs_keys && isset($scs_keys['access_key']) && isset($scs_keys['secret_key']
 	$access_key = Console::prompt('Your Access Key', array(
 	
 		'required' => true,
-		'validator' => function ($v) { return strlen($v) == 10; }
+		'validator' => function ($v) { return strlen($v) >= 2; }
 	));
 	
 	$secret_key = Console::prompt('Your Secret Key', array(
