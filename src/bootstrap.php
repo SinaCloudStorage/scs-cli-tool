@@ -37,6 +37,7 @@ $commands = array(
 	'ls' => " List objects or buckets\r\n \tscs.phar ls [scs://BUCKET[/PREFIX]]",
 	'get' => " Get file from bucket\r\n \tscs.phar get scs://BUCKET/OBJECT LOCAL_FILE",
 	'put' => " Put file into bucket\r\n \tscs.phar put FILE [FILE...] scs://BUCKET[/PREFIX]",
+	//'putdir' => " Put dir into bucket\r\n \tscs.phar putdir DIR scs://BUCKET[/PREFIX]",
 	'del' => " Delete file from bucket\r\n \tscs.phar del scs://BUCKET/OBJECT",
 	'info' => " Get information about Files\r\n \tscs.phar info scs://BUCKET/OBJECT",
 	'cp' => " Copy object\r\n \tscs.phar cp scs://BUCKET1/OBJECT1 scs://BUCKET2[/OBJECT2]",
@@ -360,6 +361,62 @@ if (isset($commands[$cmd[0]])) {
 			exit();
 		}
 	
+	} elseif ($cmd[0] == 'putdir') {
+		
+		$arguments = $cmd->getArgumentValues();
+				
+		$ar_count = count($arguments);
+		
+		if ($ar_count < 3) {
+			
+			Console::error('%rInvalid arguments%n');
+			exit();
+		}
+		
+		$scs_url_info = parse_scs_url($arguments[$ar_count-1]);
+				
+		//print_r($scs_url_info);
+			
+		if ($scs_url_info === false) {
+			
+			Console::error('%rInvalid argument ' . (string)($ar_count-1) . '%n %R"' . $arguments[$ar_count-1] . '"%n');
+			exit();
+		}
+		
+		$prefix = isset($scs_url_info['object']) ? $scs_url_info['object'] : null;
+		$dir = $arguments[1];
+		
+		if ( !is_dir($dir) ) {
+			
+			Console::error('%rInvalid argument %n %R"(' . $arguments[1] . ') failed to open dir: No such file or directory"%n');
+			exit();
+		}
+		
+		$tree = null;
+		$tree = function($directory) use (&$tree, &$dir) {
+			 
+			$mydir = dir($directory);
+			
+			while ( $file = $mydir->read() ) { 
+				
+				if ( (is_dir("$directory/$file")) && ($file != ".") && ($file != "..") ) { 
+					
+					$tree("$directory/$file");
+					
+				} else {
+					
+					if ( ($file != ".") && ($file != "..") ) {
+					
+						echo "$directory/$file\n";
+					}
+				}
+			} 
+			
+			$mydir->close(); 
+		};
+		
+		$tree($dir);
+		
 	} elseif ($cmd[0] == 'put') {
 	
 		$arguments = $cmd->getArgumentValues();
